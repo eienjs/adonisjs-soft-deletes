@@ -1,0 +1,138 @@
+{
+  "name": "@eienjs/adonisjs-soft-deletes",
+  "type": "module",
+  "version": "0.0.0",
+  "packageManager": "pnpm@12.16.1",
+  "description": "Soft deletes for AdonisJS",
+  "author": "Fernando Isidro <luffynando@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/eienjs/adonisjs-soft-deletes",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eienjs/adonisjs-soft-deletes.git"
+  },
+  "bugs": {
+    "url": "https://github.com/eienjs/adonisjs-soft-deletes/issues"
+  },
+  "keywords": [
+    "adonis",
+    "adonisjs",
+    "adonis-framework",
+    "lucid",
+    "soft-deletes"
+  ],
+  "exports": {
+    ".": "./build/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "build"
+  ],
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "prepare": "is-in-ci || husky",
+    "changelog": "auto-changelog -u -p",
+    "commitlint": "commitlint --edit",
+    "index:commands": "adonis-kit index build/commands",
+    "lint": "eslint . --fix",
+    "lint:check": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import=@poppinss/ts-exec --enable-source-maps bin/test.ts",
+    "test:coverage": "c8 pnpm run test",
+    "tool:code": "pnpm run lint:check && pnpm run typecheck",
+    "tool:build": "pnpm run tool:code && pnpm run test",
+    "prebuild": "pnpm run tool:code",
+    "build": "tsdown",
+    "release": "release-it"
+  },
+  "peerDependencies": {
+    "@adonisjs/assembler": "^8.6.0",
+    "@adonisjs/core": "^7.6.0"
+  },
+  "peerDependenciesMeta": {
+    "@adonisjs/assembler": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@adonisjs/assembler": "^8.6.0",
+    "@adonisjs/core": "^7.6.0",
+    "@adonisjs/eslint-plugin": "^2.2.2",
+    "@adonisjs/tsconfig": "^2.0.0",
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
+    "@eienjs/eslint-config": "^2.3.1",
+    "@japa/assert": "^4.2.0",
+    "@japa/runner": "^5.4.0",
+    "@poppinss/ts-exec": "^1.5.1",
+    "@types/node": "^26.6.5",
+    "auto-changelog": "^2.7.0",
+    "c8": "^12.0.0",
+    "eslint": "^10.13.0",
+    "eslint-plugin-erasable-syntax-only": "^0.7.2",
+    "husky": "^9.1.7",
+    "is-in-ci": "^2.0.0",
+    "release-it": "^21.1.1",
+    "tsdown": "^0.23.2",
+    "typescript": "^6.0.3"
+  },
+  "c8": {
+    "reporter": [
+      "text",
+      "lcov"
+    ],
+    "exclude": [
+      "bin/**",
+      "tests/**"
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "latest"
+  },
+  "auto-changelog": {
+    "template": "keepachangelog",
+    "hideCredit": true,
+    "commitLimit": false
+  },
+  "release-it": {
+    "git": {
+      "commit": true,
+      "tag": true,
+      "push": true,
+      "requireCleanWorkingDir": true,
+      "commitMessage": "chore(release): :tada: v${version}",
+      "tagAnnotation": "chore(release): :tada: v${version}"
+    },
+    "github": {
+      "release": true,
+      "web": true,
+      "releaseName": "Release v${version}"
+    },
+    "npm": {
+      "publish": true,
+      "publishPackageManager": "pnpm",
+      "publishArgs": [
+        "--no-git-checks"
+      ]
+    },
+    "hooks": {
+      "before:init": [
+        "pnpm run lint:check",
+        "pnpm run typecheck",
+        "pnpm test"
+      ],
+      "after:bump": [
+        "pnpm run build",
+        "pnpm run changelog"
+      ]
+    }
+  }
+}
