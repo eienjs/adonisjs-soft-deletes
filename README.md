@@ -11,27 +11,18 @@
 
 ## Features
 
-- **Provider Architecture**: Built with a provider/adapter structure so that Lucid is provided out of the box, and additional providers (Kysely, Drizzle ORM, TypeORM, etc.) can easily be plugged in.
 - **Full Lucid ORM Integration**: Automatic query filtering (`deleted_at is null`), eager relationship filtering, and `ModelQueryBuilder` macros.
 - **Fluent Querying**: `User.query().withTrashed()`, `User.query().onlyTrashed()`, `User.query().restore()`, plus static helpers `User.withTrashed()` and `User.onlyTrashed()`.
 - **Instance Helpers**: `.$trashed` boolean getter, `.delete()` (soft delete), `.restore()`, and `.forceDelete()`.
 
 ---
 
-## Installation
+## Quick Start
+
+Install the package using the following command:
 
 ```bash
-pnpm add @eienjs/adonisjs-soft-deletes
-# or
-npm install @eienjs/adonisjs-soft-deletes
-# or
-yarn add @eienjs/adonisjs-soft-deletes
-```
-
-Configure the package in your AdonisJS application:
-
-```bash
-node ace configure @eienjs/adonisjs-soft-deletes
+node ace add @eienjs/adonisjs-soft-deletes
 ```
 
 This will register the Lucid provider in your `adonisrc.ts` file:
@@ -39,16 +30,14 @@ This will register the Lucid provider in your `adonisrc.ts` file:
 ```ts
 export default defineConfig({
   providers: [
-    () => import('@eienjs/adonisjs-soft-deletes/providers/lucid_provider.js'),
+    () => import('@eienjs/adonisjs-soft-deletes/providers/lucid_provider'),
   ],
 });
 ```
 
----
+### Usage
 
-## Usage
-
-### 1. Database Migration
+#### 1. Database Migration
 
 Ensure your database table includes a nullable `deleted_at` timestamp:
 
@@ -74,21 +63,21 @@ export default class UsersTable extends BaseSchema {
 }
 ```
 
-### 2. Model Definition
+#### 2. Model Definition
 
 Apply the `SoftDeletes` mixin to your Lucid model:
 
 ```ts
 import { compose } from '@adonisjs/core/helpers';
 import { BaseModel } from '@adonisjs/lucid/orm';
-import { SoftDeletes } from '@eienjs/adonisjs-soft-deletes';
+import { SoftDeletes } from '@eienjs/adonisjs-soft-deletes/lucid/mixin';
 
 export default class User extends compose(BaseModel, SoftDeletes) {
   // Model properties and columns...
 }
 ```
 
-### 3. Soft Deleting and Restoring Records
+#### 3. Soft Deleting and Restoring Records
 
 ```ts
 // Find a record and soft delete
@@ -105,7 +94,7 @@ console.log(user.$trashed); // false
 await user.forceDelete();
 ```
 
-### 4. Querying Records
+#### 4. Querying Records
 
 By default, queries automatically exclude soft-deleted records:
 
@@ -127,7 +116,9 @@ const all = await User.withTrashed();
 const archived = await User.onlyTrashed();
 ```
 
----
+## Documentation
+
+The documentation is available on [EienJS](https://eienjs.com/packages/adonisjs-soft-deletes/).
 
 ## Contributing
 
