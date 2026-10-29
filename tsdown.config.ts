@@ -1,7 +1,11 @@
 import { defineConfig } from 'tsdown';
 
 export default defineConfig({
-  entry: ['index.ts'],
+  entry: [
+    'index.ts',
+    { 'lucid/*': 'src/lucid/*.ts' },
+    { 'providers/*': 'providers/*.ts' },
+  ],
   outDir: 'build',
   clean: true,
   format: ['esm'],
@@ -10,15 +14,8 @@ export default defineConfig({
   dts: true,
   target: 'esnext',
   exports: true,
-  // exports: {
-  //   customExports(pkg, _context) {
-  //     pkg['./commands'] = './build/commands/main.js';
-
-  //     return pkg;
-  //   },
-  // }, // Add this back when need commands
   unbundle: true,
-  // copy: [
-  //   { from: 'stubs/**/*.stub', to: 'build/stubs', flatten: false },
-  // ], // Add this back when we have a way to copy stubs
+  deps: {
+    neverBundle: ['luxon', '@adonisjs/core', '@adonisjs/lucid'],
+  },
 });

@@ -7,15 +7,127 @@
 [![Build Status][badge-build]][build]
 [![Total Downloads][badge-downloads]][downloads]
 
-> Soft deletes for AdonisJS
+> Provider-based Soft deletes for AdonisJS with full Lucid ORM support.
 
-## Introduction
+## Features
 
-Soft deletes for AdonisJS v7.
+- **Provider Architecture**: Built with a provider/adapter structure so that Lucid is provided out of the box, and additional providers (Kysely, Drizzle ORM, TypeORM, etc.) can easily be plugged in.
+- **Full Lucid ORM Integration**: Automatic query filtering (`deleted_at is null`), eager relationship filtering, and `ModelQueryBuilder` macros.
+- **Fluent Querying**: `User.query().withTrashed()`, `User.query().onlyTrashed()`, `User.query().restore()`, plus static helpers `User.withTrashed()` and `User.onlyTrashed()`.
+- **Instance Helpers**: `.$trashed` boolean getter, `.delete()` (soft delete), `.restore()`, and `.forceDelete()`.
 
-## Documentation
+---
 
-The documentation is available on [EienJS](https://eienjs.com/packages/adonisjs-soft-deletes/getting-started/).
+## Installation
+
+```bash
+pnpm add @eienjs/adonisjs-soft-deletes
+# or
+npm install @eienjs/adonisjs-soft-deletes
+# or
+yarn add @eienjs/adonisjs-soft-deletes
+```
+
+Configure the package in your AdonisJS application:
+
+```bash
+node ace configure @eienjs/adonisjs-soft-deletes
+```
+
+This will register the Lucid provider in your `adonisrc.ts` file:
+
+```ts
+export default defineConfig({
+  providers: [
+    () => import('@eienjs/adonisjs-soft-deletes/providers/lucid_provider.js'),
+  ],
+});
+```
+
+---
+
+## Usage
+
+### 1. Database Migration
+
+Ensure your database table includes a nullable `deleted_at` timestamp:
+
+```ts
+import { BaseSchema } from '@adonisjs/lucid/schema';
+
+export default class UsersTable extends BaseSchema {
+  protected tableName = 'users';
+
+  public async up() {
+    this.schema.createTable(this.tableName, (table) => {
+      table.increments('id');
+      table.string('email').notNullable();
+      table.timestamp('deleted_at').nullable();
+      table.timestamp('created_at').notNullable();
+      table.timestamp('updated_at').nullable();
+    });
+  }
+
+  public async down() {
+    this.schema.dropTable(this.tableName);
+  }
+}
+```
+
+### 2. Model Definition
+
+Apply the `SoftDeletes` mixin to your Lucid model:
+
+```ts
+import { compose } from '@adonisjs/core/helpers';
+import { BaseModel } from '@adonisjs/lucid/orm';
+import { SoftDeletes } from '@eienjs/adonisjs-soft-deletes';
+
+export default class User extends compose(BaseModel, SoftDeletes) {
+  // Model properties and columns...
+}
+```
+
+### 3. Soft Deleting and Restoring Records
+
+```ts
+// Find a record and soft delete
+const user = await User.findOrFail(1);
+await user.delete(); // Sets deleted_at to current timestamp
+
+console.log(user.$trashed); // true
+
+// Restore soft-deleted record
+await user.restore();
+console.log(user.$trashed); // false
+
+// Permanently delete from database
+await user.forceDelete();
+```
+
+### 4. Querying Records
+
+By default, queries automatically exclude soft-deleted records:
+
+```ts
+// Excludes soft-deleted records automatically
+const activeUsers = await User.all();
+
+// Include soft-deleted records via query builder
+const allUsers = await User.query().withTrashed();
+
+// Retrieve only soft-deleted records via query builder
+const archivedUsers = await User.query().onlyTrashed();
+
+// Bulk restore soft-deleted records via query builder
+await User.query().onlyTrashed().where('status', 'inactive').restore();
+
+// Static helpers on model
+const all = await User.withTrashed();
+const archived = await User.onlyTrashed();
+```
+
+---
 
 ## Contributing
 
