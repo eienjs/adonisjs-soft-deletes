@@ -5,7 +5,7 @@ import type { DateTime } from 'luxon';
 
 export type ModelQueryBuilderContractWithIgnoreDeleted<T extends LucidModel, R = InstanceType<T>>
   = ModelQueryBuilderContract<T, R> & {
-    ignoreDeleted: boolean;
+    ignoreDeleted?: boolean;
   };
 
 /**

@@ -108,14 +108,16 @@ export function SoftDeletes<T extends NormalizeConstructor<typeof BaseModel>>(
     public static ignoreDeleted<Model extends typeof ModelWithSoftDeletes>(
       query: ModelQueryBuilderContractWithIgnoreDeleted<Model, InstanceType<Model>>,
     ): void {
-      if (!query.ignoreDeleted) {
+      if (query.ignoreDeleted === false) {
         return;
       }
 
       const isGroupLimitQuery = query.clone().toQuery().includes('adonis_group_limit_counter');
       const deletedAtColumn = query.model.$getColumn('deletedAt')?.columnName ?? 'deleted_at';
 
-      const singleTable = (query.knexQuery as unknown as { _single?: { table?: typeof query } })._single?.table;
+      const singleTable = (query.knexQuery as unknown as { _single?: { table?: typeof query } } | undefined)
+        ?._single
+        ?.table;
       const queryIgnoreDeleted = isGroupLimitQuery && singleTable ? singleTable : query;
 
       void queryIgnoreDeleted.whereNull(`${query.model.table}.${deletedAtColumn}`);
@@ -140,7 +142,7 @@ export function SoftDeletes<T extends NormalizeConstructor<typeof BaseModel>>(
       this: Model,
       query: ModelQueryBuilderContractWithIgnoreDeleted<Model, Result>,
     ): ModelQueryBuilderContractWithIgnoreDeleted<Model, Result> {
-      if (!query.ignoreDeleted) {
+      if (query.ignoreDeleted === false) {
         return query;
       }
       query.ignoreDeleted = false;

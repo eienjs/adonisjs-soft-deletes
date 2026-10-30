@@ -1,6 +1,8 @@
+import type { QueryClientContract } from '@adonisjs/lucid/types/database';
 import { compose } from '@adonisjs/core/helpers';
 import { BaseModel, ModelQueryBuilder } from '@adonisjs/lucid/orm';
 import { test } from '@japa/runner';
+import knex from 'knex';
 import { DateTime } from 'luxon';
 import { extendModelQueryBuilder } from '../src/lucid/bindings/model_query_builder.js';
 import { SoftDeletes } from '../src/lucid/mixin.js';
@@ -93,6 +95,49 @@ test.group('Lucid SoftDeletes Mixin', () => {
     const fakeQuery = { ignoreDeleted: true };
     const result = User.disableIgnore(fakeQuery) as { ignoreDeleted: boolean };
     assert.isFalse(result.ignoreDeleted);
+  });
+
+  test('ignoreDeleted adds whereNull condition on default query', ({ assert }) => {
+    class User extends compose(BaseModel, SoftDeletes) {
+      public static override table = 'users';
+    }
+
+    let whereNullColumn: string | undefined;
+    const defaultQuery = {
+      clone: () => defaultQuery,
+      model: User,
+      toQuery: () => 'select * from users',
+      whereNull: (col: string) => {
+        whereNullColumn = col;
+
+        return defaultQuery;
+      },
+    };
+
+    User.ignoreDeleted(defaultQuery);
+    assert.equal(whereNullColumn, 'users.deleted_at');
+  });
+
+  test('ignoreDeleted skips whereNull when ignoreDeleted is false', ({ assert }) => {
+    class User extends compose(BaseModel, SoftDeletes) {
+      public static override table = 'users';
+    }
+
+    let whereNullCalled = false;
+    const query = {
+      clone: () => query,
+      ignoreDeleted: false,
+      model: User,
+      toQuery: () => 'select * from users',
+      whereNull: () => {
+        whereNullCalled = true;
+
+        return query;
+      },
+    };
+
+    User.ignoreDeleted(query);
+    assert.isFalse(whereNullCalled);
   });
 });
 
@@ -215,5 +260,117 @@ test.group('Lucid ModelQueryBuilder extensions', () => {
     const onlyTrashedResult = User.onlyTrashed() as { ignoreDeleted: boolean };
     assert.isFalse(onlyTrashedResult.ignoreDeleted);
     assert.equal(whereNotNullColumn, 'users.deleted_at');
+  });
+});
+
+test.group('Lucid SoftDeletes SQL query generation and filtering', (group) => {
+  const fakeClient = { debug: false } as unknown as QueryClientContract;
+
+  group.setup(() => {
+    extendModelQueryBuilder(ModelQueryBuilder);
+  });
+
+  test('default query compiles to SQL with where deleted_at is null', ({ assert }) => {
+    const k = knex({ client: 'sqlite3', useNullAsDefault: true });
+
+    class User extends compose(BaseModel, SoftDeletes) {
+      public static override table = 'users';
+    }
+    User.boot();
+
+    const builder = new ModelQueryBuilder(k.from('users'), User, fakeClient);
+    User.ignoreDeleted(builder);
+
+    assert.equal(builder.toQuery(), 'select * from `users` where `users`.`deleted_at` is null');
+  });
+
+  test('withTrashed query compiles to SQL without where deleted_at is null', ({ assert }) => {
+    const k = knex({ client: 'sqlite3', useNullAsDefault: true });
+
+    class User extends compose(BaseModel, SoftDeletes) {
+      public static override table = 'users';
+    }
+    User.boot();
+
+    const builder = new ModelQueryBuilder(k.from('users'), User, fakeClient);
+    builder.withTrashed();
+    User.ignoreDeleted(builder);
+
+    assert.equal(builder.toQuery(), 'select * from `users`');
+  });
+
+  test('onlyTrashed query compiles to SQL with where deleted_at is not null', ({ assert }) => {
+    const k = knex({ client: 'sqlite3', useNullAsDefault: true });
+
+    class User extends compose(BaseModel, SoftDeletes) {
+      public static override table = 'users';
+    }
+    User.boot();
+
+    const builder = new ModelQueryBuilder(k.from('users'), User, fakeClient);
+    builder.onlyTrashed();
+    User.ignoreDeleted(builder);
+
+    assert.equal(builder.toQuery(), 'select * from `users` where `users`.`deleted_at` is not null');
+  });
+
+  test('scenario: two active records and one soft deleted record', ({ assert }) => {
+    const k = knex({ client: 'sqlite3', useNullAsDefault: true });
+
+    class User extends compose(BaseModel, SoftDeletes) {
+      public static override table = 'users';
+    }
+    User.boot();
+
+    const mockRecords = [
+      { deleted_at: null, id: 1, name: 'Alice' },
+      { deleted_at: null, id: 2, name: 'Bob' },
+      { deleted_at: '2026-10-29 19:00:00', id: 3, name: 'Charlie' },
+    ];
+
+    const executeQuery = (builder: ModelQueryBuilder) => {
+      User.ignoreDeleted(builder);
+      const sql = builder.toQuery();
+
+      return mockRecords.filter((record) => {
+        if (sql.includes('`users`.`deleted_at` is null') && record.deleted_at !== null) {
+          return false;
+        }
+        if (sql.includes('`users`.`deleted_at` is not null') && record.deleted_at === null) {
+          return false;
+        }
+
+        return true;
+      });
+    };
+
+    // 1. Default query (only non-deleted records)
+    const defaultQuery = new ModelQueryBuilder(k.from('users'), User, fakeClient);
+    const defaultResults = executeQuery(defaultQuery);
+    assert.lengthOf(defaultResults, 2);
+    assert.deepEqual(
+      defaultResults.map((u) => u.name),
+      ['Alice', 'Bob'],
+    );
+
+    // 2. withTrashed (all records including trashed)
+    const withTrashedQuery = new ModelQueryBuilder(k.from('users'), User, fakeClient);
+    withTrashedQuery.withTrashed();
+    const withTrashedResults = executeQuery(withTrashedQuery);
+    assert.lengthOf(withTrashedResults, 3);
+    assert.deepEqual(
+      withTrashedResults.map((u) => u.name),
+      ['Alice', 'Bob', 'Charlie'],
+    );
+
+    // 3. onlyTrashed (only soft-deleted records)
+    const onlyTrashedQuery = new ModelQueryBuilder(k.from('users'), User, fakeClient);
+    onlyTrashedQuery.onlyTrashed();
+    const onlyTrashedResults = executeQuery(onlyTrashedQuery);
+    assert.lengthOf(onlyTrashedResults, 1);
+    assert.deepEqual(
+      onlyTrashedResults.map((u) => u.name),
+      ['Charlie'],
+    );
   });
 });
