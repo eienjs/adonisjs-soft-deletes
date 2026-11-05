@@ -145,5 +145,10 @@
         "pnpm run changelog"
       ]
     }
+  },
+  "eienjs": {
+    "title": "Soft Deletes",
+    "icon": "i-tabler-trash-off",
+    "category": "adonisjs"
   }
 }
