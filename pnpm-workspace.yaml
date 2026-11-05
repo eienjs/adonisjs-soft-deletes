@@ -1,7 +1,7 @@
 minimumReleaseAge: 1440
 minimumReleaseAgeExcludePrune: true
 minimumReleaseAgeExclude:
-  - '@eienjs/eslint-config'
+  - '@eienjs/*'
 
 trustPolicy: no-downgrade
 trustPolicyIgnoreAfter: 2880
